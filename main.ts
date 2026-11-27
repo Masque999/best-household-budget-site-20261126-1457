@@ -9,8 +9,17 @@ import { buildDossier } from "./vendor/makefun-frontend.ts";
 const repoRoot = dirname(fileURLToPath(import.meta.url));
 const outDir = process.env.MAKEFUN_OUTPUT_DIR || "/output";
 
-rmSync(outDir, { recursive: true, force: true });
+// NOTE: never rmSync outDir itself. The grader mounts the output directory
+// (an empty writable /output), and rmSync on a mount point throws EBUSY
+// ("Device or resource busy") even with force:true, failing the run with
+// exit code 1. Only the previous run's known children are cleaned below.
 mkdirSync(outDir, { recursive: true });
+
+// Clear only the previous run's outputs inside the directory. These are
+// ordinary paths, never the mount point itself, so rmSync on them is safe.
+for (const name of ["app", "screenshots", "dossier.json"]) {
+  rmSync(join(outDir, name), { recursive: true, force: true });
+}
 cpSync(join(repoRoot, "app"), join(outDir, "app"), { recursive: true });
 cpSync(join(repoRoot, "screenshots"), join(outDir, "screenshots"), { recursive: true });
 
